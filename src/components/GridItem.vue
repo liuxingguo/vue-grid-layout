@@ -176,6 +176,16 @@
             i: {
                 required: true
             },
+            resizeAxis: {
+                type: String,
+                default: 'xy',
+                validator: (val) => ['x', 'y', 'xy'].includes(val)
+            },
+            dragAxis: {
+                type: String,
+                default: 'xy',
+                validator: (val) => ['x', 'y', 'xy'].includes(val)
+            },
             dragIgnoreFrom: {
                 type: String,
                 required: false,
@@ -377,6 +387,12 @@
             },
             maxW: function () {
                 this.tryMakeResizable();
+            },
+            resizeAxis: function () {
+                this.tryMakeResizable();
+            },
+            dragAxis: function () {
+                this.tryMakeDraggable();
             }
         },
         computed: {
@@ -389,7 +405,7 @@
                     'cssTransforms' : this.useCssTransforms,
                     'render-rtl' : this.renderRtl,
                     'disable-userselect': this.isDragging,
-                    'no-touch': this.isAndroid && this.draggableOrResizableAndNotStatic
+                    'no-touch': this.draggableOrResizableAndNotStatic
                 }
             },
             resizableAndNotStatic(){
@@ -494,6 +510,11 @@
                     case "resizemove": {
 //                        console.log("### resize => " + event.type + ", lastW=" + this.lastW + ", lastH=" + this.lastH);
                         const coreEvent = createCoreData(this.lastW, this.lastH, x, y);
+                        if (this.resizeAxis === "x") {
+                           coreEvent.deltaY = 0;
+                        } else if (this.resizeAxis === "y") {
+                           coreEvent.deltaX = 0;
+                        }
                         if (this.renderRtl) {
                             newSize.width = this.resizing.width - coreEvent.deltaX;
                         } else {
@@ -538,7 +559,6 @@
                 if (pos.w < 1) {
                     pos.w = 1;
                 }
-
                 this.lastW = x;
                 this.lastH = y;
 
@@ -621,7 +641,7 @@
                 } else {
                     pos = this.calcXY(newPosition.top, newPosition.left);
                 }
-
+                
                 this.lastX = x;
                 this.lastY = y;
 
@@ -681,11 +701,9 @@
                 // x = (left - margin) / (coldWidth + margin)
                 let x = Math.round((left - this.margin[0]) / (colWidth + this.margin[0]));
                 let y = Math.round((top - this.margin[1]) / (this.rowHeight + this.margin[1]));
-
                 // Capping
                 x = Math.max(Math.min(x, this.cols - this.innerW), 0);
                 y = Math.max(Math.min(y, this.maxRows - this.innerH), 0);
-
                 return {x, y};
             },
             // Helper for generating column width
@@ -731,6 +749,8 @@
                 }
                 if (this.draggable && !this.static) {
                     const opts = {
+                        startAxis: this.dragAxis,
+                        lockAxis: this.dragAxis,
                         ignoreFrom: this.dragIgnoreFrom,
                         allowFrom: this.dragAllowFrom
                     };
@@ -759,8 +779,8 @@
 
                     // console.log("### MAX " + JSON.stringify(maximum));
                     // console.log("### MIN " + JSON.stringify(minimum));
-
                     const opts = {
+                        axis: this.resizeAxis,
                         preserveAspectRatio: true,
                         // allowFrom: "." + this.resizableHandleClass,
                         edges: {
